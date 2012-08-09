@@ -19,9 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
-import net.mcw.gringotts.Account;
-import net.mcw.gringotts.Gringotts;
-import net.mcw.gringotts.PlayerAccountHolder;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
 import net.milkbowl.vault.economy.EconomyResponse.ResponseType;
@@ -33,6 +30,10 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.plugin.Plugin;
+import org.gestern.gringotts.Account;
+import org.gestern.gringotts.AccountHolder;
+import org.gestern.gringotts.Gringotts;
+import org.gestern.gringotts.PlayerAccountHolder;
 
 public class Economy_Gringotts implements Economy {
 
@@ -90,11 +91,7 @@ public class Economy_Gringotts implements Economy {
      * @return Success or Failure
      */
     public boolean isEnabled(){
-        if (gringotts == null) {
-            return false;
-        } else {
-            return gringotts.isEnabled();
-        }
+    	return gringotts != null && gringotts.isEnabled();
     }
 
     /**
@@ -120,7 +117,7 @@ public class Economy_Gringotts implements Economy {
      * @return number of digits after the decimal point kept
      */
     public int fractionalDigits(){
-    	return -1;
+    	return 2;
     }
 
     /**
@@ -131,6 +128,7 @@ public class Economy_Gringotts implements Economy {
      * @return Human readable string describing amount
      */
     public String format(double amount) {
+    	// TODO 2-digit formatting
     	return Double.toString(amount);
     }
 
@@ -141,7 +139,7 @@ public class Economy_Gringotts implements Economy {
      * @return name of the currency (plural)
      */
     public String currencyNamePlural(){
-    	return "";
+    	return org.gestern.gringotts.Configuration.config.currencyNamePlural;
     }
 
 
@@ -152,27 +150,21 @@ public class Economy_Gringotts implements Economy {
      * @return name of the currency (singular)
      */
     public String currencyNameSingular(){
-    	return "";
+    	return org.gestern.gringotts.Configuration.config.currencyNameSingular;
     }
 
     /**
-     * Checks if this player has an account on the server yet
+     * Checks if this player or entity has an account on the server yet.
      * This will always return true if the player has joined the server at least once
-     * as all major economy plugins auto-generate a player account when the player joins the server
+     * as all major economy plugins auto-generate a player account when the player joins the server.
      * @param playerName
      * @return if the player has an account
      */
     public boolean hasAccount(String playerName) {
-    	try{
-    		Account account = gringotts.accounting.getAccount(new PlayerAccountHolder(playerName));
-    		if(account != null)
-    			return true;
-    		else
-    			return false;
-    	}
-    	catch (Exception e){
-    		return false;
-    	}
+    	AccountHolder owner = gringotts.accountHolderFactory.getAccount(playerName);
+    	if (owner == null) return false;
+    	
+    	return gringotts.accounting.getAccount(owner) != null;
 	}
 
 
@@ -182,7 +174,9 @@ public class Economy_Gringotts implements Economy {
      * @return Amount currently held in players account
      */
     public double getBalance(String playerName){
-        Account account = gringotts.accounting.getAccount(new PlayerAccountHolder(playerName));
+    	AccountHolder owner = gringotts.accountHolderFactory.getAccount(playerName);
+    	if (owner == null) return 0;
+        Account account = gringotts.accounting.getAccount(owner);
 		return account.balance();
     }
 
@@ -211,13 +205,14 @@ public class Economy_Gringotts implements Economy {
             return new EconomyResponse(0, 0, ResponseType.FAILURE, "Cannot withdraw a negative amount.");
         }
         
-        PlayerAccountHolder accountHolder = new PlayerAccountHolder(playerName);
+        AccountHolder accountHolder = gringotts.accountHolderFactory.getAccount(playerName);
+    	if (accountHolder == null) 
+    		return new EconomyResponse(0, 0, ResponseType.FAILURE, playerName + " is not a valid account holder.");
         
         Account account = gringotts.accounting.getAccount( accountHolder );
         
-        if(account.balance() >= amount) {
+        if(account.balance() >= amount && account.remove(amount)) {
             //We has mulah!
-            account.remove(amount);
             return new EconomyResponse(amount, account.balance(), ResponseType.SUCCESS, null);
         } else {
             //Not enough money to withdraw this much.
@@ -238,13 +233,16 @@ public class Economy_Gringotts implements Economy {
             return new EconomyResponse(0, 0, ResponseType.FAILURE, "Cannot desposit negative funds");
         }
         
-        PlayerAccountHolder accountHolder = new PlayerAccountHolder(playerName);
+        AccountHolder accountHolder = gringotts.accountHolderFactory.getAccount(playerName);
+        if (accountHolder == null) 
+    		return new EconomyResponse(0, 0, ResponseType.FAILURE, playerName + " is not a valid account holder.");
+        
         Account account = gringotts.accounting.getAccount( accountHolder );
         
         if (account.add(amount))        
         	return new EconomyResponse( amount, account.balance(), ResponseType.SUCCESS, null);
         else
-        	return new EconomyResponse( 0, account.balance(), ResponseType.FAILURE, "Not enough capacity to store that many funds!");
+        	return new EconomyResponse( 0, account.balance(), ResponseType.FAILURE, "Not enough capacity to store that amount!");
         
     }
 
@@ -342,12 +340,6 @@ public class Economy_Gringotts implements Economy {
      * @return if the account creation was successful
      */
     public boolean createPlayerAccount(String playerName) {
-        if (hasAccount(playerName)) {
-            return false;
-        }
-        else
-        	return true;
-        
-        
+    	return hasAccount(playerName);
     }
 }

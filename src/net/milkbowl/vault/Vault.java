@@ -220,7 +220,7 @@ public class Vault extends JavaPlugin {
         hookEconomy("CurrencyCore", Economy_CurrencyCore.class, ServicePriority.Normal, "is.currency.Currency");
 
         // Try to load Gringotts
-        hookEconomy("Gringotts", Economy_Gringotts.class, ServicePriority.Normal, "net.mcw.gringotts.Gringotts");
+        hookEconomy("Gringotts", Economy_Gringotts.class, ServicePriority.Normal, "org.gestern.gringotts.Gringotts");
         
         // Try to load Essentials Economy
         hookEconomy("Essentials Economy", Economy_Essentials.class, ServicePriority.Low, "com.earth2me.essentials.api.Economy", "com.earth2me.essentials.api.NoLoanPermittedException",  "com.earth2me.essentials.api.UserDoesNotExistException");
@@ -386,6 +386,7 @@ public class Vault extends JavaPlugin {
                 econ2.depositPlayer(pName, econ1.getBalance(pName));
             }
         }
+        sender.sendMessage("Converson complete, please verify the data before using it.");
     }
 
     private void infoCommand(CommandSender sender) {
