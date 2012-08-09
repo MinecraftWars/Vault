@@ -239,8 +239,6 @@ public class Vault extends JavaPlugin {
 
         // Try to load GoldIsMoney
         hookEconomy("GoldIsMoney", Economy_GoldIsMoney.class, ServicePriority.Normal, "com.flobi.GoldIsMoney.GoldIsMoney");
-        
-        
     }
 
     /**
